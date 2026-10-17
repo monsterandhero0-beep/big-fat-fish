@@ -20,7 +20,7 @@ const sandbox = { console, Math, Date, Matter };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
-for (const f of ['src/config.js', 'src/engine.js', 'src/render.js', 'src/audio.js', 'assets/shapes.js']) {
+for (const f of ['src/config.js', 'src/engine.js', 'src/render.js', 'src/audio.js', 'src/haptics.js', 'src/leaderboard.js', 'assets/shapes.js']) {
   vm.runInContext(readFileSync(join(root, f), 'utf8'), sandbox, { filename: f });
 }
 
@@ -270,6 +270,76 @@ r2.draw({ game: game, effects: [], time: 63600, geo: geo2, danger: false });
 const k3 = drawnKeys();
 check('再过 30 秒继续往后轮', k3.indexOf('bg-2') >= 0 && k3.indexOf('bg-0') < 0,
   '实际画了 ' + k3.join(','));
+
+/* ── 10. 手机震动 ─────────────────────────────────── */
+console.log('\n[10] 震动反馈（模拟 navigator.vibrate）');
+const vibes = [];
+sandbox.navigator = { vibrate: function (p) { vibes.push(p); return true; } };
+const Hap = sandbox.GameHaptics;
+const spin = function (ms) { const t = Date.now(); while (Date.now() - t < ms) { /* 等节流窗口过去 */ } };
+
+Hap.init(cfg);
+check('检测到支持', Hap.supported());
+Hap.setEnabled(true);
+vibes.length = 0;
+Hap.merge(3, false);
+check('合成会震动', vibes.length === 1, 'vibrate(' + vibes[0] + ')');
+
+vibes.length = 0;
+Hap.setEnabled(false);          // 关开关时会调 vibrate(0) 立刻停掉正在抖的
+vibes.length = 0;               // 把那一次"停止"清掉，只看之后还会不会抖
+Hap.merge(3, false);
+check('关掉开关后不震动', vibes.length === 0);
+
+Hap.setEnabled(true);
+spin(60);
+vibes.length = 0;
+Hap.merge(10, true);
+check('合出终级是三连抖', Array.isArray(vibes[0]) && vibes[0].length === 3, JSON.stringify(vibes[0]));
+
+spin(60);
+vibes.length = 0;
+Hap.merge(1, false);
+Hap.merge(1, false);
+Hap.merge(1, false);
+check('连锁合成只抖一次（间隔节流）', vibes.length === 1, 'vibrate 次数=' + vibes.length);
+
+spin(60);
+vibes.length = 0;
+Hap.coin();
+check('拿复活币也会抖一下', vibes.length === 1, JSON.stringify(vibes[0]));
+
+/* ── 11. 排行榜 ───────────────────────────────────── */
+console.log('\n[11] 排行榜（模拟 localStorage）');
+const store = Object.create(null);
+sandbox.localStorage = {
+  getItem: function (k) { return k in store ? store[k] : null; },
+  setItem: function (k, v) { store[k] = String(v); },
+  removeItem: function (k) { delete store[k]; },
+};
+const LB = sandbox.GameLeaderboard;
+LB.clear();
+for (let i = 1; i <= 12; i++) LB.add({ name: '玩家' + i, score: i * 100, maxTier: i % 11 });
+const top = LB.getList();
+check('最多只留 10 条', top.length === 10, '实际 ' + top.length);
+check('按分数降序', top[0].score === 1200 && top[9].score === 300,
+  top[0].score + ' … ' + top[9].score);
+const r = LB.add({ name: '我', score: 555, maxTier: 3 });
+check('新成绩能算出名次', r.rank >= 1 && r.rank <= 10, '第 ' + r.rank + ' 名');
+check('挤掉第 11 名', LB.getList().length === 10);
+
+LB.clear();
+const rEmpty = LB.add({ name: '我', score: 42, maxTier: 1 });
+check('空榜第一条就是第 1 名', rEmpty.rank === 1);
+LB.remove(rEmpty.list[0]);
+check('可以撤销（复活时用）', LB.getList().length === 0);
+
+LB.add({ name: 'A', score: 10, maxTier: 0 });
+const st = LB.stats();
+check('统计读得到', typeof st.best === 'number' && typeof st.games === 'number',
+  'best=' + st.best + ' games=' + st.games);
+LB.setName('小鱼片');
+check('名字记得住', LB.name() === '小鱼片');
 
 console.log('\n' + (fails === 0 ? '全部通过 ✓' : fails + ' 项未通过 ✗'));
 process.exit(fails === 0 ? 0 : 1);

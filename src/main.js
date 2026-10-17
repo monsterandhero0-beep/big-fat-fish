@@ -18,6 +18,7 @@
   const reviveBtn = $('revive');
   const musicBtn = $('musicToggle');
   const sfxBtn = $('sfxToggle');
+  const hapticBtn = $('hapticToggle');
   const musicVolEl = $('musicVol');
   const sfxVolEl = $('sfxVol');
 
@@ -82,6 +83,94 @@
     syncAudioButtons();
   });
 
+  /* ── 震动（手机）─────────────────────────────────────── */
+  const haptics = window.GameHaptics;
+  haptics.init(cfg);
+
+  function syncHapticBtn() {
+    const on = haptics.isEnabled();
+    hapticBtn.textContent = on ? '📳 震动开' : '📴 震动关';
+    hapticBtn.classList.toggle('off', !on);
+  }
+
+  if (!haptics.supported()) {
+    hapticBtn.style.display = 'none';        // iOS Safari 没有 Vibrate API，直接不显示
+  } else {
+    hapticBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      haptics.setEnabled(!haptics.isEnabled());
+      syncHapticBtn();
+    });
+  }
+  syncHapticBtn();
+
+  /* ── 排行榜 ─────────────────────────────────────────── */
+  const leaderboard = window.GameLeaderboard;
+  const boardEl = $('board');
+  const boardListEl = $('boardList');
+  const boardStatsEl = $('myStats');
+  const playerNameEl = $('playerName');
+  let myEntry = null;          // 本局上榜的那条（复活时撤销）
+
+  playerNameEl.value = leaderboard.name();
+
+  function renderBoard() {
+    const list = leaderboard.getList();
+    boardListEl.innerHTML = '';
+    if (!list.length) {
+      const li = document.createElement('li');
+      li.className = 'board-empty';
+      li.textContent = '还没有记录 —— 先打一局吧';
+      boardListEl.appendChild(li);
+    } else {
+      list.forEach(function (it, i) {
+        const li = document.createElement('li');
+        li.className = 'board-row' + (myEntry && it.id === myEntry.id ? ' me' : '');
+        const rk = document.createElement('span');
+        rk.className = 'rk';
+        rk.textContent = String(i + 1);
+        const nm = document.createElement('span');
+        nm.className = 'nm';
+        nm.textContent = it.name || '匿名玩家';
+        const sc = document.createElement('span');
+        sc.className = 'sc';
+        sc.textContent = String(it.score);
+        const dt = document.createElement('span');
+        dt.className = 'dt';
+        dt.textContent = (it.date || '').slice(5);
+        li.appendChild(rk);
+        li.appendChild(nm);
+        li.appendChild(sc);
+        li.appendChild(dt);
+        boardListEl.appendChild(li);
+      });
+    }
+    const st = leaderboard.stats();
+    boardStatsEl.textContent = '你的最好成绩：' + st.best +
+      ' · 玩过 ' + st.games + ' 局 · 上榜 ' + st.count + ' 次' +
+      (st.count ? ' · 榜上平均 ' + st.avg : '');
+  }
+
+  $('boardBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    renderBoard();
+    boardEl.hidden = false;
+  });
+  $('closeBoard').addEventListener('click', function () { boardEl.hidden = true; });
+  $('clearBoard').addEventListener('click', function () {
+    if (window.confirm('确定清空本机的排行榜记录吗？')) {
+      leaderboard.clear();
+      myEntry = null;
+      renderBoard();
+    }
+  });
+  boardEl.addEventListener('click', function (e) {
+    if (e.target === boardEl) boardEl.hidden = true;
+  });
+  playerNameEl.addEventListener('input', function () {
+    leaderboard.setName(playerNameEl.value.trim());
+  });
+
   /* ── 合成表（图例）─────────────────────────────────── */
   function buildLegend() {
     const list = $('legendList');
@@ -97,7 +186,7 @@
       const img = document.createElement('img');
       img.className = 'tier-img';
       img.alt = t.name;
-      img.src = cfg.assetDir + t.key + '.png';
+      img.src = cfg.assetDir + t.key + (cfg.assetExt || '.png');
       img.onerror = function () { img.style.visibility = 'hidden'; };
 
       const name = document.createElement('span');
@@ -156,9 +245,21 @@
     }
     overScoreEl.textContent = String(p.score);
     const top = cfg.tiers[p.maxTier] ? cfg.tiers[p.maxTier].name : '鱼子';
-    overTipEl.textContent = p.maxTier >= cfg.tiers.length - 2
+
+    // 记进本机排行榜
+    leaderboard.bumpGames();
+    const res = leaderboard.add({
+      name: leaderboard.name() || '匿名玩家',
+      score: p.score,
+      maxTier: p.maxTier,
+    });
+    myEntry = res.rank > 0 ? res.list[res.rank - 1] : null;
+
+    let tip = p.maxTier >= cfg.tiers.length - 2
       ? '都合成到「' + top + '」了，本鱼很满意！'
       : '最大合成到「' + top + '」，还能再来？';
+    if (res.rank > 0) tip += ' 🎉 上榜第 ' + res.rank + ' 名';
+    overTipEl.textContent = tip;
     overCoinsEl.textContent = '×' + p.coins;
     reviveBtn.disabled = p.coins <= 0;
     reviveBtn.textContent = p.coins > 0 ? '用一颗复活币继续' : '没有复活币了';
@@ -177,6 +278,7 @@
 
   game.on('merge', function (p) {
     audio.pop(p.tier, p.isFinal);
+    haptics.merge(p.tier, p.isFinal);
     effects.push({
       x: p.x, y: p.y,
       r: cfg.tiers[p.tier].r,
@@ -198,6 +300,7 @@
 
   game.on('coin', function (p) {
     audio.coin();
+    haptics.coin();
     effects.push({
       x: cfg.width / 2, y: geo.dropY + 40,
       r: 26, life: 0, dur: 900,
@@ -206,6 +309,9 @@
   });
 
   game.on('revive', function () {
+    haptics.revive();
+    // 复活了这局还没结束，先把刚才那条从榜上撤掉
+    if (myEntry) { leaderboard.remove(myEntry); myEntry = null; }
     overEl.hidden = true;
     lastScore = -1;
     lastCoins = -1;
@@ -214,19 +320,46 @@
 
   game.on('over', showOver);
 
-  /* ── 输入 ───────────────────────────────────────────── */
+  /* ── 输入：长按拖动瞄准，松手投下 ───────────────────── */
+  let dragId = null;
+
   function pointerX(ev) {
     const r = gameCanvas.getBoundingClientRect();
     return ((ev.clientX - r.left) / r.width) * cfg.width;
   }
 
+  gameCanvas.addEventListener('pointerdown', function (ev) {
+    ev.preventDefault();
+    if (dragId !== null) return;                 // 只跟第一根手指
+    dragId = ev.pointerId;
+    try { gameCanvas.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+    game.aim(pointerX(ev));                      // 按下只瞄准，不投
+  });
+
   gameCanvas.addEventListener('pointermove', function (ev) {
+    if (dragId === null || ev.pointerId !== dragId) return;
+    ev.preventDefault();
     game.aim(pointerX(ev));
   });
 
-  gameCanvas.addEventListener('pointerdown', function (ev) {
-    ev.preventDefault();
-    game.aim(pointerX(ev));
+  gameCanvas.addEventListener('pointerup', function (ev) {
+    if (dragId === null || ev.pointerId !== dragId) return;
+    dragId = null;
+    try { gameCanvas.releasePointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+    game.drop();                                 // 松手才放鱼
+  });
+
+  // 手势被打断（来电、切后台）→ 不放鱼，避免误投
+  gameCanvas.addEventListener('pointercancel', function (ev) {
+    if (dragId === null || ev.pointerId !== dragId) return;
+    dragId = null;
+    try { gameCanvas.releasePointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+  });
+
+  // 松手在画布外也算（有些浏览器不派发到画布上）
+  window.addEventListener('pointerup', function (ev) {
+    if (dragId === null || ev.pointerId !== dragId) return;
+    dragId = null;
     game.drop();
   });
 
@@ -293,6 +426,8 @@
     lastCoins = -1;
     lastNext = -1;
     syncHud();
+    // 贴图下完了，再预热 BGM（不抢首屏带宽，点下去就能听到）
+    audio.preheat();
   });
   syncHud();
   requestAnimationFrame(frame);

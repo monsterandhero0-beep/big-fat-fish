@@ -66,8 +66,18 @@ window.GAME_CONFIG = {
     opacity: 0.46,
   },
 
-  /* 图片素材约定：assets/fish/<key>.png（有就自动用，没有就画占位鱼） */
+  /* 手机震动：合成时抖一下（iOS Safari 不支持 Vibrate API，会自动隐藏开关） */
+  haptics: {
+    enabled: true,
+    mergeMs: 14,          // 基础时长（等级越高略加长）
+    minGapMs: 45,         // 连锁合成的最小间隔
+    finalPattern: [22, 40, 70],   // 合出终级时的"三连抖"
+  },
+
+  /* 图片素材约定：assets/fish/<key><assetExt>（有就自动用，没有就画占位鱼）
+   * WebP 比 PNG 小 4~5 倍，首屏快很多；换成 PNG 就把 assetExt 改成 '.png' */
   assetDir: 'assets/fish/',
+  assetExt: '.webp',
   assetBg: 'assets/bg.png',
 
   /* 等级表：r 是半径（相邻级差拉大了，一眼能看出大小），ring 是这一级的识别色

@@ -64,7 +64,8 @@ window.GameAudio = (function () {
       bgm = new Audio();
       bgm.src = inlineSrc(cfg.bgm);
       bgm.loop = true;
-      bgm.preload = 'auto';
+      // 一开始不下载：2MB 的音频会和贴图抢带宽，让首屏慢
+      bgm.preload = 'none';
       bgm.volume = 0;
       bgm.addEventListener('error', onBgmError);
     }
@@ -150,6 +151,15 @@ window.GameAudio = (function () {
   function unlock() {
     ensureCtx();
     if (bgmOn && bgm && bgm.paused) playBgm();
+  }
+
+  /* 贴图都下完之后再预热音乐：不抢首屏带宽，等玩家点的时候又已经准备好了 */
+  function preheat() {
+    if (!bgm || !bgmOn) return;
+    if (bgm.preload === 'none') {
+      bgm.preload = 'auto';
+      try { bgm.load(); } catch (e) { /* ignore */ }
+    }
   }
 
   function toggleMusic() {
@@ -258,6 +268,7 @@ window.GameAudio = (function () {
   return {
     init: init,
     unlock: unlock,
+    preheat: preheat,
     toggleMusic: toggleMusic,
     toggleSfx: toggleSfx,
     setMusicVolume: setMusicVolume,

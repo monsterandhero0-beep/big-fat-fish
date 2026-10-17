@@ -21,8 +21,18 @@ window.GameAssets = (function () {
   }
 
   function load(config) {
-    const jobs = config.tiers.map(function (t) {
-      return loadOne('fish-' + t.key, config.assetDir + t.key + '.png');
+    // 先加载「掉落池」里的等级（开局就会用到），大等级后补
+    const pool = config.dropTiers || [];
+    const ext = config.assetExt || '.png';
+    const order = config.tiers.map(function (t, i) { return i; }).sort(function (a, b) {
+      const ra = pool.indexOf(a) >= 0 ? 0 : 1;
+      const rb = pool.indexOf(b) >= 0 ? 0 : 1;
+      return ra - rb || a - b;
+    });
+
+    const jobs = order.map(function (i) {
+      const t = config.tiers[i];
+      return loadOne('fish-' + t.key, config.assetDir + t.key + ext);
     });
     jobs.push(loadOne('bg', config.assetBg));
     // 背景轮播用的立绘

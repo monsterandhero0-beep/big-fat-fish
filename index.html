@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>合成大肥鱼</title>
 <link rel="stylesheet" href="src/style.css">
 </head>
@@ -42,11 +42,13 @@
     <aside class="legend">
       <div class="legend-head">
         <span class="legend-title">合成表</span>
+        <button id="boardBtn" class="chip" type="button">🏆 排行榜</button>
       </div>
       <div class="audio-panel">
         <div class="audio-btns">
           <button id="musicToggle" class="chip" type="button">🎵 音乐开</button>
           <button id="sfxToggle" class="chip" type="button">🔊 音效开</button>
+          <button id="hapticToggle" class="chip" type="button">📳 震动开</button>
         </div>
         <label class="vol-row" title="音乐音量">
           <span class="vol-ico">🎵</span>
@@ -62,8 +64,24 @@
     </aside>
   </div>
 
+  <div class="board" id="board" hidden>
+    <div class="board-card">
+      <h2>🏆 排行榜</h2>
+      <p class="board-sub">本机最高 10 名 · 记录只存在这台设备上</p>
+      <label class="name-row">你的名字
+        <input id="playerName" type="text" maxlength="12" placeholder="匿名玩家" autocomplete="off">
+      </label>
+      <ol id="boardList" class="board-list"></ol>
+      <p id="myStats" class="board-stats"></p>
+      <div class="board-actions">
+        <button id="closeBoard" class="btn" type="button">关闭</button>
+        <button id="clearBoard" class="btn danger" type="button">清空记录</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="hint">
-    移动鼠标 / 手指瞄准 · 点击或按空格放鱼 · R 重开 · M 开关音乐<br>
+    长按拖动瞄准 · 松手放鱼 · 方向键微调 · 空格直接放 · R 重开 · M 开关音乐<br>
     堆过虚线并停留 2 秒就结束 —— 有复活币就能接着打
     <span class="credit">由DouZ's DeepSeek制作</span>
     <span class="credit">立绘/皮肤：上善 → ZipZipPipe → Small-tailqwq → yyh_001（CC BY-NC-SA 4.0 · 非商用）</span>
@@ -77,6 +95,8 @@
 <script src="src/engine.js" defer></script>
 <script src="src/assets.js" defer></script>
 <script src="src/audio.js" defer></script>
+<script src="src/haptics.js" defer></script>
+<script src="src/leaderboard.js" defer></script>
 <script src="src/render.js" defer></script>
 <script src="src/main.js" defer></script>
 </body>
