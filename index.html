@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>合成大肥鱼</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<div id="app">
+  <header class="hud">
+    <div>
+      <div class="score-label">分数</div>
+      <div class="score" id="score">0</div>
+      <div class="best" id="best">最高 0</div>
+      <div class="coins">🪙 <span id="coins">×0</span></div>
+    </div>
+    <div class="hud-right">
+      <div class="next-box">
+        <canvas id="next" width="96" height="96"></canvas>
+        <div class="next-label">下一个</div>
+      </div>
+      <button class="btn" id="restart" type="button">重来</button>
+    </div>
+  </header>
+
+  <div class="play">
+    <main class="stage">
+      <canvas id="game"></canvas>
+      <div class="over" id="over" hidden>
+        <div class="over-card">
+          <h2>合成结束</h2>
+          <p class="over-score">得分<span id="overScore">0</span></p>
+          <p class="over-coins">复活币 <span id="overCoins">×0</span></p>
+          <p class="over-tip" id="overTip">再来一局嘛～</p>
+          <button class="btn primary" id="revive" type="button">用一颗复活币继续</button>
+          <button class="btn" id="again" type="button">再来一局</button>
+        </div>
+      </div>
+    </main>
+
+    <aside class="legend">
+      <div class="legend-head">
+        <span class="legend-title">合成表</span>
+      </div>
+      <div class="audio-panel">
+        <div class="audio-btns">
+          <button id="musicToggle" class="chip" type="button">🎵 音乐开</button>
+          <button id="sfxToggle" class="chip" type="button">🔊 音效开</button>
+        </div>
+        <label class="vol-row" title="音乐音量">
+          <span class="vol-ico">🎵</span>
+          <input id="musicVol" type="range" min="0" max="100" step="1" value="38">
+        </label>
+        <label class="vol-row" title="音效音量">
+          <span class="vol-ico">🔊</span>
+          <input id="sfxVol" type="range" min="0" max="100" step="1" value="55">
+        </label>
+      </div>
+      <ul id="legendList" class="legend-list"></ul>
+      <p class="legend-tip">相同两条相撞就合成<br>每 2000 分攒一颗复活币</p>
+    </aside>
+  </div>
+
+  <footer class="hint">
+    移动鼠标 / 手指瞄准 · 点击或按空格放鱼 · R 重开 · M 开关音乐<br>
+    堆过虚线并停留 2 秒就结束 —— 有复活币就能接着打
+    <span class="credit">由DouZ's DeepSeek制作</span>
+    <span class="credit">立绘/皮肤：上善 → ZipZipPipe → Small-tailqwq → yyh_001（CC BY-NC-SA 4.0 · 非商用）</span>
+    <span class="credit">音乐：小猪P_，星落落_oi</span>
+  </footer>
+</div>
+
+<script src="vendor/matter.min.js" defer></script>
+<script src="src/config.js" defer></script>
+<script src="assets/shapes.js" defer></script>
+<script src="src/engine.js" defer></script>
+<script src="src/assets.js" defer></script>
+<script src="src/audio.js" defer></script>
+<script src="src/render.js" defer></script>
+<script src="src/main.js" defer></script>
+</body>
+</html>
